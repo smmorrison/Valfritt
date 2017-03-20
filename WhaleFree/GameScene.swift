@@ -11,54 +11,29 @@ import GameplayKit
 
 class GameScene: SKScene {
     
-    var entities = [GKEntity]()
-    var graphs = [String : GKGraph]()
+    let background = SKSpriteNode(imageNamed: "backgroundImage")
     
-    private var lastUpdateTime : TimeInterval = 0
-    private var label : SKLabelNode?
-    private var spinnyNode : SKShapeNode?
+    var score = 0
+    var health = 3
+    var gameOver : Bool?
+    let maxNumberOfWhales = 10
+    var currentNumberOfWhales : Int?
+    var timeBetweenWhales : Double?
+    var moverSpeed = 5.0
+    let moveFactor = 1.0
+    var timeNow : NSDate?
+    var nextTime : NSDate?
+    var gameOverLabel : SKLabelNode?
+    var healthLabel : SKLabelNode?
     
-    
-    override func sceneDidLoad() {
-
-    }
     
     override func didMove(to view: SKView) {
-        let background = SKSpriteNode(imageNamed: "backgroundImage")
-        background.position = CGPoint(x: size.width/2, y: size.height/2)
-        addChild(background)
-        
         run(SKAction.repeatForever(
             SKAction.sequence([
-                SKAction.run(spawnWhale),
+                SKAction.run(createWhale),
                 SKAction.wait(forDuration: 1.0)])))
         
-        /*var levelTimerLabel = SKLabelNode(fontNamed: "ArialMT")
-        
-        var levelTimerValue: Int = 30 {
-            didSet {
-                levelTimerLabel.text = "Time left: \(levelTimerValue)"
-            }
-        }
-        levelTimerLabel.fontColor = SKColor.black
-        levelTimerLabel.fontSize = 20
-        levelTimerLabel.position = CGPoint(x: size.width/2, y: size.height/2 + 200)
-        levelTimerLabel.text = "Time left: \(levelTimerValue)"
-        addChild(levelTimerLabel)
-        
-        let wait = SKAction.wait(forDuration: 1.0)
-        let block = SKAction.run({
-            [unowned self] in
-            
-            if self.levelTimerValue > 0 {
-                self.levelTimerValue -= 1
-            }else{
-                self.removeAction(forKey: "countdown")
-            }
-        })
-        let sequence = SKAction.sequence([wait,block])
-        
-        run(SKAction.repeatForever(sequence), withKey: "countdown")*/
+        initializeValues()
     }
     
     func random() -> CGFloat {
@@ -68,87 +43,108 @@ class GameScene: SKScene {
     func random(min: CGFloat, max: CGFloat) -> CGFloat {
         return random() * (max - min) + min
     }
+
     
-    func spawnWhale() {
+    func initializeValues(){
+        self.removeAllChildren()
+        
+        background.position = CGPoint(x: size.width/2, y: size.height/2)
+        addChild(background)
+        
+        score = 0
+        gameOver = false
+        currentNumberOfWhales = 0
+        timeBetweenWhales = 1.0
+        moverSpeed = 5.0
+        health = 3
+        nextTime = NSDate()
+        timeNow = NSDate()
+        
+        healthLabel = SKLabelNode(fontNamed:"System")
+        healthLabel?.text = "Health: \(health)"
+        healthLabel?.fontSize = 30
+        healthLabel?.fontColor = SKColor.black
+        healthLabel?.position = CGPoint(x:self.frame.minX + 80, y:(self.frame.minY + 100));
+        
+        self.addChild(healthLabel!)
+    }
+    
+    func createWhale(){
         let whale = SKSpriteNode(imageNamed: "whale")
         whale.name = "whale"
         whale.position = CGPoint(x: frame.size.width + whale.size.width/2,
                                  y: frame.size.height * random(min: 0, max: 1))
         addChild(whale)
-        whale.run(
-            SKAction.moveBy(x: -size.width - whale.size.width, y: 0.0,
-                             duration: TimeInterval(random(min: 1, max: 2))))
+        whale.run(SKAction.moveBy(x: -size.width - whale.size.width, y: 0.0,
+                                  duration: TimeInterval(random(min: 1, max: 2))))
     }
     
-    /*func levelCountdown(){
-        levelTimerValue--
-        levelTimerLabel.text = String(levelTimerValue)
-    }*/
-
-    
-    
-    func touchDown(atPoint pos : CGPoint) {
-        if let n = self.spinnyNode?.copy() as! SKShapeNode? {
-            n.position = pos
-            n.strokeColor = SKColor.green
-            self.addChild(n)
+    func checkIfWhalesReachEnd(){
+        for child in self.children {
+            if(child.position.x == 0){
+                self.removeChildren(in: [child])
+                currentNumberOfWhales?-=1
+                health -= 1
+            }
         }
     }
     
-    func touchMoved(toPoint pos : CGPoint) {
-        if let n = self.spinnyNode?.copy() as! SKShapeNode? {
-            n.position = pos
-            n.strokeColor = SKColor.blue
-            self.addChild(n)
+    func checkIfGameIsOver(){
+        if (health <= 0 && gameOver == false){
+            self.removeAllChildren()
+            showGameOverScreen()
+            gameOver = true
         }
     }
     
-    func touchUp(atPoint pos : CGPoint) {
-        if let n = self.spinnyNode?.copy() as! SKShapeNode? {
-            n.position = pos
-            n.strokeColor = SKColor.red
-            self.addChild(n)
-        }
+    func showGameOverScreen(){
+        gameOverLabel = SKLabelNode(fontNamed:"System")
+        gameOverLabel?.text = "Game Over! Score: \(score)"
+        gameOverLabel?.fontColor = SKColor.red
+        gameOverLabel?.fontSize = 65;
+        gameOverLabel?.position = CGPoint(x:self.frame.midX, y:self.frame.midY);
+        self.addChild(gameOverLabel!)
     }
     
     override func touchesBegan(_ touches: Set<UITouch>, with event: UIEvent?) {
-        if let label = self.label {
-            label.run(SKAction.init(named: "Pulse")!, withKey: "fadeInOut")
-        if action(forKey: "countdown") != nil {removeAction(forKey: "countdown")}
+        for touch: AnyObject in touches {
+            let location = (touch as! UITouch).location(in: self)
+            if let theName = self.atPoint(location).name {
+                if theName == "whale" {
+                    self.removeChildren(in: [self.atPoint(location)])
+                    currentNumberOfWhales?-=1
+                    score+=1
+                    }
+                }
+                if (gameOver!==true){
+                    initializeValues()
+                }
         }
         
-        for t in touches { self.touchDown(atPoint: t.location(in: self)) }
     }
-    
-    override func touchesMoved(_ touches: Set<UITouch>, with event: UIEvent?) {
-        for t in touches { self.touchMoved(toPoint: t.location(in: self)) }
-    }
-    
-    override func touchesEnded(_ touches: Set<UITouch>, with event: UIEvent?) {
-        for t in touches { self.touchUp(atPoint: t.location(in: self)) }
-    }
-    
-    override func touchesCancelled(_ touches: Set<UITouch>, with event: UIEvent?) {
-        for t in touches { self.touchUp(atPoint: t.location(in: self)) }
-    }
-    
     
     override func update(_ currentTime: TimeInterval) {
-        // Called before each frame is rendered
-        
-        // Initialize _lastUpdateTime if it has not already been
-        if (self.lastUpdateTime == 0) {
-            self.lastUpdateTime = currentTime
+        healthLabel?.text="Health: \(health)"
+        if(health < 2){
+            healthLabel?.fontColor = SKColor.red
         }
         
-        // Calculate time since last update
-        let dt = currentTime - self.lastUpdateTime
-        
-        // Update entities
-        for entity in self.entities {
-            entity.update(deltaTime: dt)
+        timeNow = NSDate()
+        if (currentNumberOfWhales! < maxNumberOfWhales &&
+            timeNow!.timeIntervalSince1970 > nextTime!.timeIntervalSince1970 &&
+            health > 0){
+            
+            nextTime = timeNow?.addingTimeInterval(TimeInterval(timeBetweenWhales!))
+            let newX = Int(arc4random()%1024)
+            let newY = Int(self.frame.height+10)
+            _ = CGPoint(x:newX,y:newY)
+            
+            createWhale()
+            
+            moverSpeed = moverSpeed/moveFactor
+            timeBetweenWhales = timeBetweenWhales!/moveFactor
         }
-        
-        self.lastUpdateTime = currentTime
+        checkIfWhalesReachEnd()
+        checkIfGameIsOver()
     }
 }
