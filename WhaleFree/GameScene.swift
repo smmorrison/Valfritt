@@ -9,9 +9,39 @@
 import SpriteKit
 import GameplayKit
 
+
+class StartScene: SKScene {
+    let tapStartLabel = SKLabelNode(fontNamed: "System")
+
+    override func didMove(to view: SKView) {
+        let background = SKSpriteNode(imageNamed: "backgroundImage")
+        background.position = CGPoint(x: size.width/2, y: size.height/2)
+        addChild(background)
+        
+        tapStartLabel.fontSize = 16
+        tapStartLabel.fontColor = SKColor.black
+        tapStartLabel.horizontalAlignmentMode = .center
+        tapStartLabel.verticalAlignmentMode = .center
+        tapStartLabel.position = CGPoint(x:self.frame.midX, y:self.frame.midY);
+        tapStartLabel.text = "Tap to start game"
+        addChild(tapStartLabel)
+    }
+    
+    override func touchesBegan(_ touches: Set<UITouch>, with event: UIEvent?) {
+        let gameScene = GameScene(size: size)
+        gameScene.scaleMode = scaleMode
+        
+        let reveal = SKTransition.doorsOpenVertical(withDuration: 1)
+        view!.presentScene(gameScene, transition: reveal)
+    }
+}
+
+
+
 class GameScene: SKScene {
     
     let background = SKSpriteNode(imageNamed: "backgroundImage")
+
     
     var score = 0
     var health = 3
@@ -28,10 +58,7 @@ class GameScene: SKScene {
     
     
     override func didMove(to view: SKView) {
-        run(SKAction.repeatForever(
-            SKAction.sequence([
-                SKAction.run(createWhale),
-                SKAction.wait(forDuration: 1.0)])))
+        run(SKAction.repeatForever(SKAction.sequence([SKAction.run(createWhale),SKAction.wait(forDuration: 1.0)])))
         
         initializeValues()
     }
@@ -72,16 +99,14 @@ class GameScene: SKScene {
     func createWhale(){
         let whale = SKSpriteNode(imageNamed: "whale")
         whale.name = "whale"
-        whale.position = CGPoint(x: frame.size.width + whale.size.width/2,
-                                 y: frame.size.height * random(min: 0, max: 1))
+        whale.position = CGPoint(x: frame.size.width + whale.size.width/2, y: frame.size.height * random(min: 0, max: 1))
         addChild(whale)
-        whale.run(SKAction.moveBy(x: -size.width - whale.size.width, y: 0.0,
-                                  duration: TimeInterval(random(min: 1, max: 2))))
+        whale.run(SKAction.moveBy(x: -size.width - whale.size.width, y: 0.0, duration: TimeInterval(random(min: 1, max: 1.5))))
     }
     
-    func checkIfWhalesReachEnd(){
+    func didWhaleReachEnd(){
         for child in self.children {
-            if(child.position.x == 0){
+            if(child.position.x <= 0){
                 self.removeChildren(in: [child])
                 currentNumberOfWhales?-=1
                 health -= 1
@@ -89,7 +114,7 @@ class GameScene: SKScene {
         }
     }
     
-    func checkIfGameIsOver(){
+    func isGameOver(){
         if (health <= 0 && gameOver == false){
             self.removeAllChildren()
             showGameOverScreen()
@@ -98,12 +123,21 @@ class GameScene: SKScene {
     }
     
     func showGameOverScreen(){
+        background.position = CGPoint(x: size.width/2, y: size.height/2)
+        addChild(background)
         gameOverLabel = SKLabelNode(fontNamed:"System")
         gameOverLabel?.text = "Game Over! Score: \(score)"
         gameOverLabel?.fontColor = SKColor.red
-        gameOverLabel?.fontSize = 65;
+        gameOverLabel?.fontSize = 30;
         gameOverLabel?.position = CGPoint(x:self.frame.midX, y:self.frame.midY);
         self.addChild(gameOverLabel!)
+    }
+    
+    func goToStartScene(){
+        let scene:StartScene = StartScene(size: self.view!.bounds.size)
+        let transition = SKTransition.fade(withDuration: 1.0)
+        scene.scaleMode = SKSceneScaleMode.fill
+        self.view!.presentScene(scene, transition: transition)
     }
     
     override func touchesBegan(_ touches: Set<UITouch>, with event: UIEvent?) {
@@ -117,7 +151,7 @@ class GameScene: SKScene {
                     }
                 }
                 if (gameOver!==true){
-                    initializeValues()
+                    goToStartScene()
                 }
         }
         
@@ -144,7 +178,7 @@ class GameScene: SKScene {
             moverSpeed = moverSpeed/moveFactor
             timeBetweenWhales = timeBetweenWhales!/moveFactor
         }
-        checkIfWhalesReachEnd()
-        checkIfGameIsOver()
+        didWhaleReachEnd()
+        isGameOver()
     }
 }
